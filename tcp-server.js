@@ -1,6 +1,7 @@
 const path = require('path');
 const net = require('net');
 const fs = require('fs');
+const uid = require('uid');
 const child_process = require('child_process');
 
 const port = 4000;
@@ -16,7 +17,7 @@ const server = net.createServer((client) => {
 
     function handler(data, error) {
         if (!error) {
-            handlers[data.toString().split(separator)[0]];
+            handlers[data.toString().split(separator)[0]](data, client);
         }
         else console.error(error);
     }
@@ -27,19 +28,19 @@ server.listen(port, () => {
 });
 
 const handlers = {
-    "getWorkers": async () => {
+    "getWorkers": async (data, client) => {
         let res = await getWorkers();
         client.write(`getWorkers${separator}${JSON.stringify(res)}`);
     },
-    "add": () => {
+    "add": (data, client) => {
         startWorker(data.toString().split(separator)[1]);
-        client.write(`add${separator }${workers[workers.length - 1].pid}${separator}${workers[workers.length - 1].startedOn}`);
+        client.write(`add${separator}${workers[workers.length - 1].pid}${separator}${workers[workers.length - 1].startedOn}`);
     },
-    "remove": async () => {
+    "remove": async (data, client) => {
         let index = workers.findIndex(worker => worker.pid == data.toString().split(separator)[1]);
         let numbers = await getNumbers(workers[index]);
         client.write(`remove${separator}${workers[index].pid}${separator}${workers[index].startedOn}${separator}${numbers}`);
-        fs.appendFile(workers[index].filename,  "]", () => {});
+        fs.appendFile(workers[index].filename, "]", () => {});
         process.kill(workers[index].pid);
         workers.splice(index, 1);
     },
@@ -47,10 +48,10 @@ const handlers = {
 
 
 function startWorker(interval) {
-    let filename = `${__dirname}/${Date.now() + seed++}.json`;
+    let filename = `${__dirname}/${uid()}.json`;
     let worker = child_process.spawn('node', ['worker.js', filename, interval], {detached:true});
-    let date = new Date;
-    worker.startedOn = date.toISOString();
+    let date = new Date().toString();
+    worker.startedOn = date.split(/ /g).slice(1, 5).join(' ');
     worker.filename = filename;
     workers.push(worker);
 }

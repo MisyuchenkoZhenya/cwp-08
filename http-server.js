@@ -3,12 +3,16 @@ const net = require('net');
 
 const hostname = '127.0.0.1';
 const port = 3000;
-const tcp_port = 8124;
+const tcp_port = 4000;
 const separator = "|||||";
 const connection = new net.Socket();
 
-const workers = {
-    "getWorkers": (req, res, payload, cb) => {
+connection.connect(tcp_port, hostname, () => {
+    console.log('Connected to the TCP server');
+});
+
+const handlers = {
+    '/workers': (req, res, payload, cb) => {
         connection.write("getWorkers");
         connection.on('data', (data, error) => {
             if (!error) {
@@ -19,8 +23,7 @@ const workers = {
             else console.error(error);
         });
     },
-
-    "add": (req, res, payload, cb) => {
+    '/workers/add': (req, res, payload, cb) => {
         if (payload.x !== undefined) {
             connection.write(`add${separator}${payload.x}`);
             connection.on('data', (data, error) => {
@@ -37,8 +40,7 @@ const workers = {
         }
         else cb({code: 405, message: 'Worker not found'});
     },
-
-    "remove": (req, res, payload, cb) => {
+    '/workers/remove': (req, res, payload, cb) => {
         if (payload.id !== undefined) {
             connection.write(`remove${separator}${payload.id}`);
             connection.on('data', (data, error) => {
@@ -58,16 +60,6 @@ const workers = {
     },
 };
 
-connection.connect(tcp_port, hostname, () => {
-    console.log('Connected to the TCP server');
-});
-
-const handlers = {
-    '/workers': workers.getWorkers,
-    '/workers/add': workers.add,
-    '/workers/remove': workers.remove,
-};
-
 const server = http.createServer((req, res) => {
     parseBodyJson(req, (err, payload) => {
         const handler = getHandler(req.url);
@@ -75,7 +67,7 @@ const server = http.createServer((req, res) => {
             if (err) {
                 res.writeHead(err.code, {'Content-Type' : 'application/json'});
                 res.end( JSON.stringify(err) );
-                return;
+                //return;
             }
             res.writeHead(200, {'Content-Type': 'application/json'});
             res.end(JSON.stringify(result, null, "\t"));
