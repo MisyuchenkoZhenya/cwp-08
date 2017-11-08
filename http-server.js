@@ -4,7 +4,6 @@ const net = require('net');
 const hostname = '127.0.0.1';
 const port = 3000;
 const tcp_port = 4000;
-const separator = "|||||";
 const connection = new net.Socket();
 
 connection.connect(tcp_port, hostname, () => {
@@ -13,11 +12,14 @@ connection.connect(tcp_port, hostname, () => {
 
 const handlers = {
     '/workers': (req, res, payload, cb) => {
-        connection.write("getWorkers");
+        connection.write(JSON.stringify({
+             "handl": "getWorkers", 
+            }));
         connection.on('data', (data, error) => {
             if (!error) {
-                if (data.toString().split(separator)[0] === "getWorkers") {
-                    cb(null, JSON.parse(data.toString().split(separator)[1]));
+                data = JSON.parse(data);
+                if (data["handl"] === "getWorkers") {
+                    cb(null, data["array"]);
                 }
             }
             else console.error(error);
@@ -25,13 +27,17 @@ const handlers = {
     },
     '/workers/add': (req, res, payload, cb) => {
         if (payload.x !== undefined) {
-            connection.write(`add${separator}${payload.x}`);
+            connection.write(JSON.stringify({ 
+                "handl": "add",
+                "x": payload.x,
+             }));
             connection.on('data', (data, error) => {
                 if (!error) {
-                    if (data.toString().split(separator)[0] === "add") {
+                    data = JSON.parse(data);
+                    if (data["handl"] === "add") {
                         cb(null, {
-                            pid: data.toString().split(separator)[1],
-                            startedOn: data.toString().split(separator)[2],
+                            "pid": data["pid"],
+                            "startedOn": data["date"],
                         });
                     }
                 }
@@ -42,21 +48,25 @@ const handlers = {
     },
     '/workers/remove': (req, res, payload, cb) => {
         if (payload.id !== undefined) {
-            connection.write(`remove${separator}${payload.id}`);
+            connection.write(JSON.stringify({
+                "handl": "remove",
+                "id": payload.id,
+            }));
             connection.on('data', (data, error) => {
                 if (!error) {
-                    if (data.toString().split(separator)[0] === "remove") {
+                    data = JSON.parse(data);
+                    if (data["handl"] === "remove") {
                         cb(null, {
-                            pid: data.toString().split(separator)[1],
-                            startedOn: data.toString().split(separator)[2],
-                            numbers: data.toString().split(separator)[3],
+                            "pid": data["pid"],
+                            "startedOn": data["date"],
+                            "numbers": data["numbers"],
                         });
                     }
                 }
                 else console.error(error);
             });
         }
-        else cb({code: 405, message: 'Worker not found'});
+        else cb({ "code": 405, "message": 'Worker not found' });
     },
 };
 
@@ -67,7 +77,6 @@ const server = http.createServer((req, res) => {
             if (err) {
                 res.writeHead(err.code, {'Content-Type' : 'application/json'});
                 res.end( JSON.stringify(err) );
-                //return;
             }
             res.writeHead(200, {'Content-Type': 'application/json'});
             res.end(JSON.stringify(result, null, "\t"));
@@ -84,7 +93,7 @@ function getHandler(url) {
 }
 
 function notFound(req, res, payload, cb) {
-    cb({code: 404, message: 'Not found'});
+    cb({"code": 404, "message": 'Not found'});
 }
 
 function parseBodyJson(req, cb) {

@@ -5,8 +5,6 @@ const uid = require('uid');
 const child_process = require('child_process');
 
 const port = 4000;
-let seed = 0;
-const separator = "|||||";
 let workers = [];
 
 const server = net.createServer((client) => {
@@ -17,7 +15,8 @@ const server = net.createServer((client) => {
 
     function handler(data, error) {
         if (!error) {
-            handlers[data.toString().split(separator)[0]](data, client);
+            data = JSON.parse(data);
+            handlers[data["handl"]](data, client);
         }
         else console.error(error);
     }
@@ -30,22 +29,32 @@ server.listen(port, () => {
 const handlers = {
     "getWorkers": async (data, client) => {
         let res = await getWorkers();
-        client.write(`getWorkers${separator}${JSON.stringify(res)}`);
+        res["handl"] = "getWorkers";
+        client.write(JSON.stringify(res));
     },
     "add": (data, client) => {
-        startWorker(data.toString().split(separator)[1]);
-        client.write(`add${separator}${workers[workers.length - 1].pid}${separator}${workers[workers.length - 1].startedOn}`);
+        startWorker(data["x"]);
+        client.write(JSON.stringify({
+            "handl": "add",
+            "pid": workers[workers.length - 1].pid,
+            "date": workers[workers.length - 1].startedOn,
+        }));
     },
     "remove": async (data, client) => {
-        let index = workers.findIndex(worker => worker.pid == data.toString().split(separator)[1]);
+        let index = workers.findIndex(worker => worker.pid == data["id"]);
         let numbers = await getNumbers(workers[index]);
-        client.write(`remove${separator}${workers[index].pid}${separator}${workers[index].startedOn}${separator}${numbers}`);
+        const message = {
+            "handl": "remove",
+            "pid": workers[index].pid,
+            "date": workers[index].startedOn,
+            "numbers": numbers,
+        }
         fs.appendFile(workers[index].filename, "]", () => {});
         process.kill(workers[index].pid);
         workers.splice(index, 1);
+        client.write(JSON.stringify(message));
     },
 }
-
 
 function startWorker(interval) {
     let filename = `${__dirname}/${uid()}.json`;
@@ -80,6 +89,6 @@ async function getWorkers() {
                 "numbers" : numbers,
             });
         }
-        resolve(res);
+        resolve({ "array": res });
     })
 }
