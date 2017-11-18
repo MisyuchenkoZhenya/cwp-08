@@ -33,12 +33,13 @@ const handlers = {
         client.write(JSON.stringify(res));
     },
     "add": (data, client) => {
-        startWorker(data["x"]);
-        client.write(JSON.stringify({
-            "handl": "add",
-            "pid": workers[workers.length - 1].pid,
-            "date": workers[workers.length - 1].startedOn,
-        }));
+        if(startWorker(data["x"], client)){
+            client.write(JSON.stringify({
+                "handl": "add",
+                "pid": workers[workers.length - 1].pid,
+                "date": workers[workers.length - 1].startedOn,
+            }));
+        }         
     },
     "remove": async (data, client) => {
         let index = workers.findIndex(worker => worker.pid == data["id"]);
@@ -56,13 +57,18 @@ const handlers = {
     },
 }
 
-function startWorker(interval) {
+function startWorker(interval, client) {
+    if(isNaN(Number(interval)) || interval <= 0) {
+        client.write(JSON.stringify({ "handl": "exit" }));
+        return false;
+    }
     let filename = `${__dirname}/${uid()}.json`;
-    let worker = child_process.spawn('node', ['worker.js', filename, interval], {detached:true});
+    let worker = child_process.spawn('node', ['worker.js', filename, interval]);
     let date = new Date().toString();
     worker.startedOn = date.split(/ /g).slice(1, 5).join(' ');
     worker.filename = filename;
     workers.push(worker);
+    return true;
 }
 
 function getNumbers(worker) {

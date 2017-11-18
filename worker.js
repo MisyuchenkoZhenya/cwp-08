@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 let jsonFile = process.argv[2];
-let X_number = isNaN(Number(process.argv[3])) ? 1 : Math.ceil(process.argv[3]);
+let X_number = Math.ceil(process.argv[3]);
 
 fs.writeFile(jsonFile, `[ ${rand()}`, (err) => {
     if(err){

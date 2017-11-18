@@ -40,6 +40,7 @@ const handlers = {
                             "startedOn": data["date"],
                         });
                     }
+                    else cb({code: 406, message: 'Incorrect arg'});
                 }
                 else console.error(error);
             });
